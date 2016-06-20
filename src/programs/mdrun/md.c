@@ -96,6 +96,10 @@
 #include "gromacs/swap/swapcoords.h"
 #include "gromacs/imd/imd.h"
 
+#include "gmx_ga2la.h"
+#include "types/commrec.h"
+
+
 #ifdef GMX_FAHCORE
 #include "corewrap.h"
 #endif
@@ -221,6 +225,11 @@ double do_md(FILE *fplog, t_commrec *cr, int nfile, const t_filenm fnm[],
     pme_load_balancing_t pme_loadbal = NULL;
     double               cycles_pmes;
     gmx_bool             bPMETuneTry = FALSE, bPMETuneRunning = FALSE;
+    int  nsubpart = 8;
+    int myatoms[8] = { 2096, 2098, 2104, 2102, 2100, 2106, 2107, 2108 };
+    real fov[24];// force vector, 3* nsub in size
+    real posv[24];//position vector
+
 
     /* Interactive MD */
     gmx_bool          bIMDstep = FALSE;
@@ -229,6 +238,8 @@ double do_md(FILE *fplog, t_commrec *cr, int nfile, const t_filenm fnm[],
     /* Temporary addition for FAHCORE checkpointing */
     int chkpt_ret;
 #endif
+//----bmd hacks a definition are rr and dd anything?
+    void hellof_( gmx_int64_t *ii, rvec rr, rvec dd);
 
     /* Check for special mdrun options */
     bRerunMD = (Flags & MD_RERUN);
@@ -381,7 +392,8 @@ double do_md(FILE *fplog, t_commrec *cr, int nfile, const t_filenm fnm[],
         snew(state, 1);
         dd_init_local_state(cr->dd, state_global, state);
 
-        if (DDMASTER(cr->dd) && ir->nstfout)
+	        if (DDMASTER(cr->dd) && ir->nstfout)
+	//	if (1)
         {
             snew(f_global, state_global->natoms);
         }
@@ -1086,8 +1098,123 @@ double do_md(FILE *fplog, t_commrec *cr, int nfile, const t_filenm fnm[],
                      state->lambda, graph,
                      fr, vsite, mu_tot, t, mdoutf_get_fp_field(outf), ed, bBornRadii,
                      (bNS ? GMX_FORCE_NS : 0) | force_flags);
-        }
+	    	    	    
 
+	    				 
+	    if (DOMAINDECOMP(cr)){ // hardcode communication here
+	      
+	      
+	      
+	      //the idea is to send out fov, then let each node add it for itself
+	      // we only send fov and we skip an earlier collect on f_global
+	      MPI_Status status;//
+	      int lai;//local atom
+	      int lcell;//home cell
+	      int my_rank;//the rank
+	      int ime;//for mapping to real atom id
+	      int iimportant =0;
+	      my_rank = cr->nodeid;
+	      if(!MASTER(cr)){
+		for(i=0;i<nsubpart;i++){ //particles of interest
+		  fov[i*3]=0;
+		  fov[i*3+1]=0;
+		  fov[i*3+2]=0;
+		  ime=myatoms[i]-1; 
+		  if(ga2la_get(cr->dd->ga2la,ime,&lai,&lcell)){ 	  			   
+		    if(lcell == 0) {
+		      fov[i*3] = state->x[lai][0];
+		      fov[i*3+1] = state->x[lai][1];
+		      fov[i*3+2] = state->x[lai][2];		    
+		      iimportant=1;
+		    }//lcell 
+		  } //ga2
+		  //		    printf("%d %d %E %E %E \n", my_rank, i, fov[i*3], fov[i*3+1], fov[i*3+2]); 		
+		}// i particles
+		MPI_Send(&iimportant, 1, MPI_INT, 0, 1234, cr->dd->mpi_comm_all);
+		if(iimportant==1){
+		MPI_Send(&fov, 3*nsubpart, MPI_FLOAT, 0, 1234, cr->dd->mpi_comm_all);
+		//now that you sent yours, wait on master to get back to you with forces, shouldn't take long.
+		MPI_Recv(&fov, 3*nsubpart, MPI_FLOAT, 0, 1234, cr->dd->mpi_comm_all, &status);
+		for(i=0;i<nsubpart;i++){ //now roll in the external forces
+		  ime=myatoms[i]-1;
+		  if(ga2la_get(cr->dd->ga2la,ime,&lai,&lcell)){ 	  			   
+		    if(lcell == 0) {
+		      f[lai][0] += fov[i*3];
+		      f[lai][1] += fov[i*3+1];
+		      f[lai][2] += fov[i*3+2];
+		    }
+		  }
+		}
+		}//close iimportant
+		
+	      } else { //you werent master so here is 
+		int nmax;
+		int j;
+		int ihits[1000]={0}; //up to 1000 ranks
+		nmax = cr->nnodes;
+		if(cr->nnodes != cr->npmenodes){
+		  nmax = cr->nnodes - cr->npmenodes;
+		}
+		for (i=1;i<nmax;i++){
+		  MPI_Recv(&iimportant, 1, MPI_INT, i, 1234, cr->dd->mpi_comm_all, &status);
+		  ihits[i]=iimportant;
+		  if(ihits[i] == 1){
+		    MPI_Recv(&fov, 3*nsubpart, MPI_FLOAT, i, 1234, cr->dd->mpi_comm_all, &status);
+		    for(j=0;j<nsubpart;j++){
+		      if(fov[j*3] != 0){ //in general i need a better rule for this
+			posv[j*3] = fov[j*3];
+			posv[j*3+1] = fov[j*3+1];
+			posv[j*3+2] = fov[j*3+2];
+		      }//this is eh but should be OK 
+		    //printf("%d %d %E %E %E \n", i, j, fov[j*3], fov[j*3+1], fov[j*3+2]); 		
+		    }
+		  }//close hits detection
+		}
+		
+		for(i=0;i<nsubpart;i++){ //particles of interest 
+		  fov[i*3]=0;
+		  fov[3*i+1]=0;
+		  fov[i*3+2]=0;
+		  ime=myatoms[i]-1; 
+		  if(ga2la_get(cr->dd->ga2la,ime,&lai,&lcell)){ 	  			   
+		    if(lcell == 0) {
+		      posv[i*3] = state->x[lai][0];
+		      posv[i*3+1] = state->x[lai][1];
+		      posv[i*3+2] = state->x[lai][2];		    
+		    }//lcell 
+		  } //ga2
+		}// i particles
+		//now we have all CV particles so call hellof and send out the forces
+		//call hellof on posv and fov
+				hellof_( &step,posv,fov ) ;
+				for (i=1;i<nmax;i++){ //spread fov back to workers
+		  if(ihits[i] == 1){
+		MPI_Send(&fov, 3*nsubpart, MPI_FLOAT, i, 1234, cr->dd->mpi_comm_all);
+		  }
+		}
+		for(i=0;i<nsubpart;i++){ //particles of interest
+		  ime=myatoms[i]-1;
+		  if(ga2la_get(cr->dd->ga2la,ime,&lai,&lcell)){ 	  			   
+		    if(lcell == 0) {
+		      f[lai][0] += fov[i*3];
+		      f[lai][1] += fov[i*3+1];
+		      f[lai][2] += fov[i*3+2];
+		    }
+		  }
+		}
+		
+		//for(i=0;i<nsubpart;i++){ //printf to see if you pooched it
+		//printf("%d %E %E %E \n", i, posv[i*3], posv[i*3+1], posv[i*3+2]); 		
+		//	      }//end pooched it if
+	      }//detect master with an if
+	      
+	      //end BMD
+	      
+	      
+
+	    }//master and DomComp
+            
+	}
         if (bVV && !bStartingFromCpt && !bRerunMD)
         /*  ############### START FIRST UPDATE HALF-STEP FOR VV METHODS############### */
         {

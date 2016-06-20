@@ -1746,8 +1746,70 @@ static void dd_distribute_vec_sendrecv(gmx_domdec_t *dd, t_block *cgs,
 #endif
     }
 }
+//BMD --- for catching the abp force
+static void dd_distribute_vec_sendrecvbmd(gmx_domdec_t *dd, t_block *cgs,
+                                       rvec *v, rvec *lv)
+{
+    gmx_domdec_master_t *ma;
+    int                  n, i, c, a, nalloc = 0;
+    rvec                *buf = NULL;
 
-static void dd_distribute_vec_scatterv(gmx_domdec_t *dd, t_block *cgs,
+    if (DDMASTER(dd))
+    {
+        ma  = dd->ma;
+
+        for (n = 0; n < dd->nnodes; n++)
+        {
+            if (n != dd->rank)
+            {
+                if (ma->nat[n] > nalloc)
+                {
+                    nalloc = over_alloc_dd(ma->nat[n]);
+                    srenew(buf, nalloc);
+                }
+                /* Use lv as a temporary buffer */
+                a = 0;
+                for (i = ma->index[n]; i < ma->index[n+1]; i++)
+                {
+                    for (c = cgs->index[ma->cg[i]]; c < cgs->index[ma->cg[i]+1]; c++)
+                    {
+                        copy_rvec(v[c], buf[a++]);
+                    }
+                }
+                if (a != ma->nat[n])
+                {
+                    gmx_fatal(FARGS, "Internal error a (%d) != nat (%d)",
+                              a, ma->nat[n]);
+                }
+
+#ifdef GMX_MPI
+                MPI_Send(buf, ma->nat[n]*sizeof(rvec), MPI_BYTE,
+                         DDRANK(dd, n), n, dd->mpi_comm_all);
+#endif
+            }
+        }
+        sfree(buf);
+        n = DDMASTERRANK(dd);
+        a = 0;
+        for (i = ma->index[n]; i < ma->index[n+1]; i++)
+        {
+	  for (c = cgs->index[ma->cg[i]]; c < cgs->index[ma->cg[i]+1]; c++) //all of this < protein natom
+            {
+                copy_rvec(v[c], lv[a++]);
+            }
+        }
+    }
+    else
+    {
+#ifdef GMX_MPI
+        MPI_Recv(lv, dd->nat_home*sizeof(rvec), MPI_BYTE, DDMASTERRANK(dd),
+                 MPI_ANY_TAG, dd->mpi_comm_all, MPI_STATUS_IGNORE);
+//nee a loop adding to f less than protein natom
+#endif
+    }
+}
+//BMD --- end -------------
+void dd_distribute_vec_scatterv(gmx_domdec_t *dd, t_block *cgs,
                                        rvec *v, rvec *lv)
 {
     gmx_domdec_master_t *ma;
@@ -1778,7 +1840,8 @@ static void dd_distribute_vec_scatterv(gmx_domdec_t *dd, t_block *cgs,
     dd_scatterv(dd, scounts, disps, buf, dd->nat_home*sizeof(rvec), lv);
 }
 
-static void dd_distribute_vec(gmx_domdec_t *dd, t_block *cgs, rvec *v, rvec *lv)
+
+void dd_distribute_vec(gmx_domdec_t *dd, t_block *cgs, rvec *v, rvec *lv)
 {
     if (dd->nnodes <= GMX_DD_NNODES_SENDRECV)
     {
@@ -1789,7 +1852,19 @@ static void dd_distribute_vec(gmx_domdec_t *dd, t_block *cgs, rvec *v, rvec *lv)
         dd_distribute_vec_scatterv(dd, cgs, v, lv);
     }
 }
-
+// BMD ---- this will send out abp force and nothing else
+void dd_distribute_vecbmd(gmx_domdec_t *dd, t_block *cgs, rvec *v, rvec *lv)
+{
+  //    if (dd->nnodes <= GMX_DD_NNODES_SENDRECV)
+  //{
+        dd_distribute_vec_sendrecvbmd(dd, cgs, v, lv);
+	//}
+	//else
+	//{
+        //dd_distribute_vec_scattervbmd(dd, cgs, v, lv);
+	//}
+}
+// BMD ---- end
 static void dd_distribute_dfhist(gmx_domdec_t *dd, df_history_t *dfhist)
 {
     int i;

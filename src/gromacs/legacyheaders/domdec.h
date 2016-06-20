@@ -155,7 +155,12 @@ void dd_setup_dlb_resource_sharing(t_commrec           *cr,
 
 void setup_dd_grid(FILE *fplog, gmx_domdec_t *dd);
 
+void dd_distribute_vec(gmx_domdec_t *dd, t_block *cgs, 
+			   rvec *v, rvec *lv);
+
 void dd_collect_vec(gmx_domdec_t *dd,
+                    t_state *state_local, rvec *lv, rvec *v);
+void dd_collect_bmd(gmx_domdec_t *dd,
                     t_state *state_local, rvec *lv, rvec *v);
 
 void dd_collect_state(gmx_domdec_t *dd,

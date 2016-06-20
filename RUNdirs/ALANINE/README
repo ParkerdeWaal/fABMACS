@@ -1,0 +1,11 @@
+the params.in file is as:
+
+0.8   #b
+0.1   #c
+10.0    #alpha in number of bins, so this hill has a total base of 20 bins
+0     #0=mABP, 1=WTmetaD
+1.0   #p
+3     #not used here
+
+
+Everything you need to run alanine dipeptide is in this directory.

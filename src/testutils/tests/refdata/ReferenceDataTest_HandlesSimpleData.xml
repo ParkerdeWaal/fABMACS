@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="referencedata.xsl"?>
+<ReferenceData>
+  <Bool Name="int">true</Bool>
+  <Int Name="int">1</Int>
+  <Int64 Name="int64">4398046511104</Int64>
+  <UInt64 Name="uint64">4398046511104</UInt64>
+  <Real Name="real">0.5</Real>
+  <String Name="string">Test</String>
+</ReferenceData>

@@ -1,0 +1,11 @@
+There are params.in files for cylinder and sphere restraints. 
+
+isob.gro and isob.cpt can be used to re-run simulations from the bound state.
+
+OUTside.gro and OUTside.cpt can be used to re-run simulations from the unbound state.
+
+The "Reference" file is also here.
+
+The sphpoints and cylpoints files are also here.
+
+The params.in file will be described when you patch.
