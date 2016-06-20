@@ -88,3 +88,4 @@ Go run simulations! Be sure that you point to the fABMACS executable. Use SPHERE
 [GROMACS 5.0.5]: https://github.com/gromacs/gromacs/releases/tag/v5.0.5
 [VMD]: http://www.ks.uiuc.edu/Research/vmd/
 [HERE]: http://scitation.aip.org/content/aip/journal/jcp/143/23/10.1063/1.4937939
+[RUNdirs]: https://github.com/BradleyDickson/fABMACS/tree/master/RUNdirs
