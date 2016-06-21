@@ -11,7 +11,7 @@ This code is modified for the following functions:
 
 **This is not standard gromacs, don't use it for equilibration tasks!**
 
-All the things required for building the published ligand simulation inputs are also included in the [RUNdirs] subdirectory. Alanine dipeptide inputs are included there as well, just check the sub directory names.
+All the things required for building the published ligand simulation inputs are also included in the [RUNdirs] subdirectory. Alanine dipeptide inputs are included there as well, just check the sub directory names and read the README files in those directories.
 
 The [RUNdirs] directory contains parameter files for everything that appeared in publication. The bias parameter inputs are largely transferable but may need to be tweaked for some situations.
 
@@ -68,9 +68,11 @@ Lastly, distance units are in nanometers, as per GROMACS.
 - cylpoints file: Holds two points to define the cylindrical restraint. The one used in our publication is in the [RUNdirs] directory named RErun. We use [VMD] to draw cylinders and select the points. You only need this if you use the cylindrical restraint.
 - params.in file: Holds all bias and restraint parameters. This file is described every time the PATCHscript.sh is executed and a general set of parameter values is given. The params.in that were used to run our ligand simulations are in the [RUNdirs]/RErun directory. 
 
-The topolog and equilibrated coordinates (and cpt), and md.mdp are in the RErun directory. New simulations can be built by using 
+The topolog and equilibrated coordinates (and cpt), and md.mdp are in the RErun directory. Simulation inputs can be built by using: 
+
 ***Run from bound state***
  - PATH-TO-grompp_mpi -f md.mdp -c isob.gro -t isob.cpt -o run.tpr
+
 ***Run from unbound state***
  - PATH-TO-grompp_mpi -f md.mdp -c short.gro -t short.cpt -o run.tpr
 
@@ -84,6 +86,15 @@ Go run simulations! Be sure that you point to the fABMACS executable. Use SPHERE
 1. The simulations will write a file named "freeE" that contains the current free energy estimate. CV1 and CV2 are given in the first two columns, the free energy estimate is given in the third column and the raw sampling histogram is given in the fourth column.
 
 2. Simulations also write a file named "fort.88" The first column is timestep, second and third columns are collective variables 1 and 2, the fourth column is the "hill height"
+
+3. An xyz file of the atoms in the CVs is output, named "fort.81." This file can be used to check that the periodic boundaries are treated correctly.
+
+# Requirements
+1. ***Cubic simulation cell*** Right now, simulation cells must be cubic. This simplifies the treatment of PBCs. We will release a generalization to rectangular cells soon. If the atoms in your CV will never cross the cell boundary, then your cell can have any shape.
+
+2. ***RMSD CVs*** Right now, RMSD is supported so a number of applications should be possible. We will release a distance based CV set soon.
+
+3. ***Initial state cannot be wrapped*** The initial coordiates of the atoms in the CVs cannot be wrapped through the periodic boundaries. We avoid needing to communicate the system topology by satisfying this requirement.
 
 [GROMACS 5.0.5]: https://github.com/gromacs/gromacs/releases/tag/v5.0.5
 [VMD]: http://www.ks.uiuc.edu/Research/vmd/
