@@ -22,7 +22,9 @@ Lastly, distance units are in nanometers, as per GROMACS.
 # To Build:
 1. Go to your fABMACS directory. (you've already downloaded, unpacked, etc...)
 
-2. For Alanine dipeptide ```./PATCHscript.sh alanine``` For custom simulations: Run ./PATCHscript.sh BMAX NPARTS NCV1 NCV2 CVMAX CVREST
+2. Prepare your "list" file. This file holds the atom number of each atom used in the CV. This release uses RMSD for CV, so no atom is expected to appear twice. The "list" file used for simulations that were published is found in the fABMACS dir and is named "benzoisoxazoloazepinelists". To re-run published simulations, copy this file to the name "list". 
+
+3. For Alanine dipeptide ```./PATCHscript.sh alanine``` For custom simulations: Run ./PATCHscript.sh BMAX NPARTS NCV1 NCV2 CVMAX CVREST
 
  - BMAX is the number of bins that will span the CV space
  - NPARTS is the total number of atoms in the collective variables
@@ -30,12 +32,11 @@ Lastly, distance units are in nanometers, as per GROMACS.
  - NCV2 is the number of atoms in the second CV
  - CVMAX is the maximum possible value for any CV
  - CVREST is the starting position of a harmonic restraint acting on CV1 and CV2
- - **Published ligand simulations used ```./PATCHscript 480 8 4 4 6 5.5``` to run with spherical restraint** 
- - **Published ligand simulations used ```./PATCHscript 480 8 4 4 6 3 cylinder``` to run with cylindrical restraint. CVREST=3 defines the length of the cylinder.** 
+ - **Example use:** Published ligand simulations used ```./PATCHscript.sh 480 8 4 4 6 5.5``` to run with spherical restraint
+ - **Example use:** Published ligand simulations used ```./PATCHscript.sh 480 8 4 4 6 3 cylinder``` to run with cylindrical restraint. CVREST=3 defines the length of the cylinder.
 
-3. Prepare your "list" file. This file holds the atom number of each atom used in the CV. This release uses RMSD for CV, so no atom is expected to appear twice. The "list" file used for simulations that were published is found in the fABMACS dir and is named "benzoisoxazoloazepinelists". To re-run published simulations, copy this file to the name "list". The number of atoms is set by NPARTS above. Copy the "alaninelist" file for alanine dipeptide simulations.
 
-4. Run the cmake command with whatever options you need to use to compile standard GROMACS 5.0.5. We used the options ```-DGMX_BUILD_OWN_FFTW=ON  -DGMX_SIMD=AVX2_256 -DGMX_OPENMP=OFF -DGMX_MPI=ON``` Our cmake looked like this:
+4. Run the cmake command with the options you need to use to compile standard GROMACS 5.0.5. We used the options ```-DGMX_BUILD_OWN_FFTW=ON  -DGMX_SIMD=AVX2_256 -DGMX_OPENMP=OFF -DGMX_MPI=ON``` Our cmake looked like this:
 
  - ```cmake PATH-TO-SOURCE -DGMX_BUILD_OWN_FFTW=ON  -DGMX_SIMD=AVX2_256 -DGMX_OPENMP=OFF -DGMX_MPI=ON -DCMAKE_INSTALL_PREFIX=PATH-TO-BIN```
 
@@ -45,6 +46,9 @@ Lastly, distance units are in nanometers, as per GROMACS.
 
 
 # To run simulations of alanine dipeptide
+
+0. You must have used ```./PATCHscript.sh alanine``` to build fABMACS
+
 1. Go to fABMACS/RUNdirs/ALANINE and build a new tpr file:
  - PATH-TO-grompp_mpi -f md.mdp -c isob.gro -t isob.cpt -o ala.tpr
 
@@ -73,7 +77,7 @@ The topolog and equilibrated coordinates (and cpt), and md.mdp are in the RErun 
 ***Run from bound state***
  - PATH-TO-grompp_mpi -f md.mdp -c isob.gro -t isob.cpt -o run.tpr
 
-***Run from unbound state***
+***Run from unbound state (spherical restraint only)***
  - PATH-TO-grompp_mpi -f md.mdp -c short.gro -t short.cpt -o run.tpr
 
 Simulations use RMSD for CVs, so you also need to restrain something in the system so that the reference used to define RMSD is always valid. We do this by adding some restraints via the GROMACS genrestr tool. Be sure to add restraints for you simulations, you can read the topol files for our ligand system to see how we've added these restraints. See the [RUNdirs]/RErun directory, look for back.itp in the topol file.
