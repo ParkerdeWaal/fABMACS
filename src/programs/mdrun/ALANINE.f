@@ -484,9 +484,9 @@ c      enddo
             do i=1,nbin
                if(imabp.eq.0)then !mABP
                !mABP sans-MOLLY
-c                  freest=-bolt*log(decon(i,j)*pop(i,j)**(bee/(1d0-bee)))
-                  freest=-bolt/(1d0-bee)
-     .                 *log(cee*(1d0-bee)*pop(i,j)+1d0)
+                  freest=-bolt*log(decon(i,j)*pop(i,j)**(bee/(1d0-bee)))
+c                  freest=-bolt/(1d0-bee)
+c     .                 *log(cee*(1d0-bee)*pop(i,j)+1d0)
 
                elseif(imabp.eq.1)then !WTmetaD
                   sf=exp(-pop(i,j)/DelT)*omega
@@ -518,9 +518,9 @@ c         sf=omega*fac/(relate*decon(i,j)+1d0)
                at1 = dx * (dble(i) - 0.5d0)
                if(imabp.eq.0)then !mABP
                !mABP sans-MOLLY
-c                  freest=-bolt*log(decon(i,j)*pop(i,j)**(bee/(1d0-bee)))  
-                  freest=-bolt/(1d0-bee)
-     .                 *log(cee*(1d0-bee)*pop(i,j)+1d0)
+                  freest=-bolt*log(decon(i,j)*pop(i,j)**(bee/(1d0-bee)))  
+c                  freest=-bolt/(1d0-bee)
+c     .                 *log(cee*(1d0-bee)*pop(i,j)+1d0)
 
                elseif(imabp.eq.1)then !WTmetaD
                   sf=exp(-pop(i,j)/DelT)*omega
