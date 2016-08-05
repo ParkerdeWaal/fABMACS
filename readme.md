@@ -67,7 +67,9 @@ Lastly, distance units are in nanometers, as per GROMACS.
 # Custom simulation or re-run our ligand simulations
 ***Things you need, can all be found in RUNdirs/RErun directory***
 
-- Reference file: Holds position of every atom in the CVs at time t=0. The Reference file for our ligand simulations can be seen in the [RUNdirs] directory named RErun.
+- Reference file: Holds position of every atom in the CVs at time t=0. The Reference file for our ligand simulations can be seen in the [RUNdirs] directory named RErun. Your Reference file can be created easily using this bit:
+ ```a=`cat PATHto/fABMACS/list`;for w in $a; do grep ' '$w' ' PATHto/EQ.gro |awk '{print $4,$5,$6}';done > Reference```
+where "PATHto" is a path to fABMACS where the list file is or a "PATHto" an equilibrated gro file (called EQ.gro here).
 - sphpoints file: Holds position of spherical restraint center. The one used in our publication is in the [RUNdirs] directory named RErun. The sphere can be centered anywhere. You need this if you are not using cylindrical restraint. ***Make the radius LARGE if you don't want this restraint to act***
 - cylpoints file: Holds two points to define the cylindrical restraint. The one used in our publication is in the [RUNdirs] directory named RErun. We use [VMD] to draw cylinders and select the points. You only need this if you use the cylindrical restraint.
 - params.in file: Holds all bias and restraint parameters. This file is described every time the PATCHscript.sh is executed and a general set of parameter values is given. The params.in that were used to run our ligand simulations are in the [RUNdirs]/RErun directory. 
