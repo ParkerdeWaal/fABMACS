@@ -19,6 +19,10 @@ We figure you are in a UNIX environment.
 
 Lastly, distance units are in nanometers, as per GROMACS.
 
+**Rectangular simulation cells are now supported.**
+-the "width" variable in params.in now **requires** three (3) "widths" 
+-the input now must be "widthx widthy widthz" as reflected in the [RUNdirs] inputs
+
 # To Build:
 1. Go to your fABMACS directory. (you've already downloaded, unpacked, etc...)
 
