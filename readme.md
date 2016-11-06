@@ -1,5 +1,5 @@
 # fABMACS
-A fast, hard-wired version of [GROMACS 5.0.5] that computes free energy estimates via adaptive biasing potentials. The manuscript is submitted.
+A fast, hard-wired version of [GROMACS 5.0.5] that computes free energy estimates via adaptive biasing potentials. The accompanying manuscript can be found at http://scitation.aip.org/content/aip/journal/jcp/145/15/10.1063/1.4964776
 
 This code is modified for the following functions:
 
