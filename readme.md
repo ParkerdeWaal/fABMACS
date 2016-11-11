@@ -21,8 +21,8 @@ Lastly, distance units are in nanometers, as per GROMACS.
 
 ### To-do list:
 - [x] Implement rectangular systems
-- [ ] Modular patching script
-- [ ] Implement distance CVs
+- [ ] Implement distance CVs (partially done)
+- [ ] Modular patching script (with mixed CV type support)
 - [ ] Port to GROMACS 2016 release
 
 **Rectangular simulation cells are now supported.**
