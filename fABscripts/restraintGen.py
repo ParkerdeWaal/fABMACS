@@ -2,7 +2,7 @@
 # Generates a restraint file for CA atoms 
 #
 # Usage: python restraintGen.py {system .GRO file} {ligand resname} {restraint radius in nm}
-# 		 python restraintGen.py isob.gro LIG 1 > chainA.itp
+#        python restraintGen.py isob.gro LIG 1 > chainA.itp
 
 import sys
 import numpy as np
