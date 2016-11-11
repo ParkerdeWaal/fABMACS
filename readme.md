@@ -20,7 +20,7 @@ We figure you are in a UNIX environment.
 Lastly, distance units are in nanometers, as per GROMACS.
 
 ### To-do list:
-- [x] Implement rectangual systems
+- [x] Implement rectangular systems
 - [ ] Modular patching script
 - [ ] Implement distance CVs
 - [ ] Port to GROMACS 2016 release
