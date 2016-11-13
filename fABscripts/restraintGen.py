@@ -6,8 +6,6 @@
 
 import sys
 import numpy as np
-from __future__ import print_function
-
 
 inFile = sys.argv[1]
 ligandName = sys.argv[2]
