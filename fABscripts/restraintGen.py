@@ -39,10 +39,8 @@ for d1 in np.nditer(ligPos):
 b = [int(x) for x in b]
 b.sort()
 
-print """
-[ position_restraints ]
-;  i funct	 fcx        fcy        fcz
-"""
+print "[ position_restraints ]"
+print ";  i funct	 fcx        fcy        fcz"
 
 for item in b:
 	print '%5i  1 1000 1000 1000' % item
