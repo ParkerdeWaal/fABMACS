@@ -16,6 +16,7 @@ groFile = open(inFile, "r")
 raw = np.dtype([('ID', int),('pos','(3,)f8')])
 ligPos = np.empty([0,2],dtype=raw)
 caPos = np.empty([0,2],dtype=raw)
+insideList = []
 resList = []
 
 for line in groFile:
@@ -23,24 +24,27 @@ for line in groFile:
 		ligPos = np.append(ligPos, np.array([(line.split()[2],(line.split()[3],line.split()[4], line.split()[5]))], dtype=raw))
 	if line[13:15] == 'CA':
 		caPos = np.append(caPos, np.array([(line.split()[2],(line.split()[3],line.split()[4], line.split()[5]))], dtype=raw))
-
+		resList.append(int(line.split()[2]))
+		
 # calculate distanes
 for d1 in np.nditer(ligPos):
 	for d2 in np.nditer(caPos):
-		tempDist1 = (d1['pos']-d2['pos'])**2
-		tempDist1 = tempDist1.sum(axis=-1)
-		tempDist1 = np.sqrt(tempDist1)
-		if tempDist1 >= float(restraintRadius):
-			resList.append(int(d2['ID']))
-			b = set(resList)
+		tempDist = np.sqrt((d2['pos'][0]-d1['pos'][0])**2+(d2['pos'][1]-d1['pos'][1])**2+(d2['pos'][2]-d1['pos'][2])**2)
+		if tempDist <= float(restraintRadius):
+			insideList.append(int(d2['ID']))
+			b = set(insideList)
 # sort list
 b = [int(x) for x in b]
 b.sort()
 
+c = [x for x in resList if x not in b]
+
+
+
 print "[ position_restraints ]"
 print ";  i funct	 fcx        fcy        fcz"
 
-for item in b:
+for item in c:
 	print '%5i  1 1000 1000 1000' % item
 			
 
