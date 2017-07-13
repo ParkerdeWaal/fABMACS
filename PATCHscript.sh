@@ -4,11 +4,17 @@ LOG=`echo "PATCH.LOG."$nowname`
 flag=`echo $@ |grep WTmetaD |wc -l`
 cflag=`echo $@ |grep -i cylinder |wc -l`
 alaflag=`echo $@ |grep alanine |wc -l`
+ffil=`echo $@ |grep OVERFILL |wc -l`
+fhyp=`echo $@ |grep HYPER |wc -l`
 
 if [ $alaflag -gt 0 ] ; then
     cd src/programs/mdrun
     cp ALANINEMDdotC md.c
     cp ALANINE.f hello.f
+    if [ $fhyp -gt 0 ] ; then
+	cp ALANINE-hyper.f hello.f	
+    fi
+
 else
 
 if [ -z "$1" ] ; then
@@ -26,15 +32,19 @@ else
     cd src/programs/mdrun
     if [ $flag -gt 0 ] ; then 
 	if [ $cflag -gt 0 ] ; then
-	    sed -e 's/cWTmetaD//g' Cylinder.f > tempfile.f
+	    sed -e 's/cWTmetaD//g' PathchingRMSD.f > tempfile.f
+	    sed -i 's/cCYLN//g' tempfile.f	
 	else
 	    sed -e 's/cWTmetaD//g' PatchingRMSD.f > tempfile.f
+	    sed -i 's/cSPHR//g' tempfile.f	
 	fi
     else
 	if [ $cflag -gt 0 ] ; then
-	    sed -e 's/cmABP//g' Cylinder.f > tempfile.f
+	    sed -e 's/cmABP//g' PatchingRMSD.f > tempfile.f
+	    sed -i 's/cCYLN//g' tempfile.f	
 	else
 	    sed -e 's/cmABP//g' PatchingRMSD.f > tempfile.f
+	    sed -i 's/cSPHR//g' tempfile.f	
 	fi
     fi
     cmd=`echo "sed -i 's/BMAX/"$1"/g' tempfile.f"`
@@ -49,6 +59,17 @@ else
     eval $cmd
     cmd=`echo "sed -i 's/CVREST/"$6"/g' tempfile.f"`
     eval $cmd
+    if [ $ffil -gt 0 ] ; then
+	sed -i 's/cOVERF//g' tempfile.f	
+	sed -i 's/!OVERF//g' tempfile.f	
+    fi
+    if [ $fhyp -gt 0 ] ; then
+	sed -i 's/cHYPER//g' tempfile.f	
+	sed -i 's/!HYPER//g' tempfile.f	
+	sed -i 's/cOVERF//g' tempfile.f	
+	sed -i 's/!OVERF//g' tempfile.f	
+    fi
+#NEED TO GET STATEA/B
     cmd=`echo "sed -e 's/NPARTS/"$2"/g' PatchingMDdotc > tempMD.c"`
     eval $cmd 
     NPTHREE=`echo 3*$2 |bc`

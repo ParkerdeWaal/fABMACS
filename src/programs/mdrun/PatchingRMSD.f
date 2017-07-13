@@ -8,12 +8,13 @@ cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       real*8 dpop(2,BMAX,BMAX),pop(BMAX,BMAX)
       real*8 dela(3,BMAX,BMAX),ddela(BMAX,BMAX)
       real*8 decon(BMAX,BMAX),  widths(3)
-      real*8 x0(NPARTS*3),ocog(3) !aly
-      real*8 xwrp(NPARTS*3)       !for wrapping it
-      real*8 alp,bee,cee,width,dih,DelT
-      real*8 bolt,dx,radius,scal,omega
-      real*8 point(2,3),ormal(3)
-      integer look(BMAX,BMAX),ialp
+      real*8 x0(NPARTS*3),ocog(3) 
+      real*8 xwrp(NPARTS*3)!HYPER,statea,time,plat
+      real*8 alp,bee,cee,width,dih,DelT!OVERF,desto,flim
+      real*8 bolt,dx,radius,scal,omega!OVERF,const,bangG,obangG
+cHYPER      real*8 ASTATE1,ASTATE2,BSTATE1,BSTATE2
+      real*8 point(2,3),ormal(3),ormli
+      integer look(BMAX,BMAX),ialp,ltime
       integer nbin,imabp,np,np1,np2
       save !and save the stuff
 
@@ -26,12 +27,27 @@ cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
 
       if(istep.eq.0)then
-         open(13,file="sphpoints")!replaced width/2 as sphere center
-         do i=1,1
-            do j=1,3
-               read(13,*) point(i,j)
-            enddo
-         enddo
+cHYPER         time=0d0
+cHYPER         statea=0d0
+cOVERF         bangG=0d0
+cOVERF         obangG=0d0
+cOVERF         const=0d0
+cOVERF         ltime=0
+
+cCYLN         open(13,file="cylpoints")
+cCYLN         do i=1,2
+cCYLN            do j=1,3
+cCYLN               read(13,*) point(i,j)
+cCYLN            enddo
+cCYLN         enddo
+cCYLN         close(13)
+
+cSPHR         open(13,file="sphpoints")!replaced width/2 as sphere center
+cSPHR         do i=1,1
+cSPHR            do j=1,3
+cSPHR               read(13,*) point(i,j)
+cSPHR            enddo
+cSPHR         enddo
          
          bah=1d0
          bah2 = 1d0
@@ -58,11 +74,14 @@ c         enddo
          read(11,*) cee !c parameter in mABP (is taken as c*dt)
          read(11,*) alp !a/dx in S_a
          read(11,*) (widths(j),j=1,3) ! rectangular
-         read(11,*) radius !sphere restraint
+         read(11,*) radius !sphere or cyl restraint
          read(11,*) scal !power for shape
          read(11,*) irest !restart or not
+cOVERF         read(11,*) flim !fill limit
+cHYPER         read(11,*) ASTATE1, ASTATE2, BSTATE1, BSTATE2
          bolt = temperature/11604.467d0 *96.48d0 !hard code TEMPERATURE!!!!!!
          imabp=0
+cHYPER         plat=bee*bolt*log(cee*bee*0d0+1d0)/(1d0-bee)
          close(11) !close it
 cWTmetaD         omega = bolt*bee*cee !WTmetaD conversion, and muTmetaD
 cWTmetaD         DelT = bolt*bee/(1d0-bee) !ditto
@@ -83,7 +102,7 @@ c         alp2 = alp*alp !save the alpha^2
                if(ib1.gt.nbin)ib1=nbin
                if(ib1.lt.1)ib1=1     
                ib1=nbin*i-(nbin-j)!ib1
-               look(i,j)=ib1
+c               look(i,j)=ib1
 !-----MOLLIIIIIII
                ex = arg2/tol
                aex=ex*ex
@@ -133,12 +152,18 @@ c         alp2 = alp*alp !save the alpha^2
             do j=1,nbin
                do i=1,nbin
                   read(99,111) pop(i,j), dpop(1,i,j), dpop(2,i,j), 
-     .                 decon(i,j)
+     .                 decon(i,j)!HYPER, plat
                enddo
             enddo
             close(99)
          endif
          xwrp=xx
+         sum=0d0
+         do i=nbin/2-60,nbin/2+60
+            sum=sum+dela(1,i,nbin/2)
+         enddo
+         ormli=sum*sum !90% fudger
+
       endif                     !end the initial stuff
 !do basic PBC here with a cubic box, careful to hardcode the box
 
@@ -212,6 +237,27 @@ c     .           +jaco(2,ip*3-(3-j))
       if(ibin.gt.nbin)ibin=nbin
       if(ibin.lt.1)ibin=1     
       ibin2=ibin
+cmABP      denom = 1d0+cee*(1d0-bee)*pop(ibin1,ibin2)            
+cHYPER      pwr=bee/(1d0-bee)!         !
+cHYPER      boost=denom**pwr!          !carve these out on PATCH flag
+cHYPER      boost=boost*exp(-plat/bolt)!
+cHYPER      ltime=50000 !dephase time, in steps
+cHYPER      if(angl1.lt.ASTATE1.or.angl2.lt.ASTATE2.and.istep.gt.ltime)then !statea
+cHYPER         statea=statea+0.002d0*boost !assumes timestep
+cHYPER         time=time+0.002d0
+cHYPER      elseif(angl1.gt.BSTATE1.or.angl2.gt.BSTATE2)then
+cHYPER         write(87,*) statea, statea/time, boost !can do post proc 
+cHYPER         call flush(87)
+cHYPER         open(99,file='restartABP')
+cHYPER         do j=1,nbin
+cHYPER            do i=1,nbin
+cHYPER               write(99,111) pop(i,j), dpop(1,i,j), dpop(2,i,j), 
+cHYPER     .              decon(i,j), plat
+cHYPER            enddo
+cHYPER         enddo
+cHYPER         close(99)
+cHYPER         stop
+cHYPER      endif!patchscript flag
 
 !-------------------------------------------------------------------------
 !      UPDATE THE BIAS POTENTIAL HERE ---
@@ -221,12 +267,11 @@ cWTmetaD      ave1(1) = -dpop(1,ibin1,ibin2)
 cWTmetaD      ave1(2) = -dpop(2,ibin1,ibin2)            
 cWTmetaD      s=exp(-pop(ibin1,ibin2)/DelT)*omega
 
-cmABP      denom = 1d0+cee*(1d0-bee)*pop(ibin1,ibin2)            
 cmABP      ave1(1) = -cee*bee*bolt*dpop(1,ibin1,ibin2)/denom 
-cmABP      denom = 1d0+cee*(1d0-bee)*pop(ibin1,ibin2)      
 cmABP      ave1(2) = -cee*bee*bolt*dpop(2,ibin1,ibin2)/denom 
-      !update grids
-
+      !update grids, if hyperd then delay by ltime
+cOVERF      if(const.le.pop(ibin1,ibin2).and.istep.gt.ltime)then!
+      decon(ibin1,ibin2)=decon(ibin1,ibin2)+1d0
       jst=ibin2-(ialp+1) !11 because used 10 in def of tol
       jst=max(jst,1)
       jnd=ibin2+(ialp+1)
@@ -243,8 +288,9 @@ cmABP      ave1(2) = -cee*bee*bolt*dpop(2,ibin1,ibin2)/denom
             boom = dela(1,ibin1,i)*booma ! product of two hills for bias
 cWTmetaD            pop(i,j) = pop(i,j) + boom*s
 cmABP            pop(i,j) = pop(i,j) + boom
+cOVERF            if(pop(i,j).gt.bangG)bangG=pop(i,j)
 !deconvoluted free energy estimate ------------------------------
-            decon(i,j)=decon(i,j)+boomcc*boomc
+c            decon(i,j)=decon(i,j)+boomcc*boomc !pushed outside now
 !----------------------------------------------------------------
 cWTmetaD            dpop(1,i,j) = dpop(1,i,j)+ddela(ibin1,i)
 cWTmetaD     .      *dela(1,ibin2,j)*s
@@ -256,8 +302,34 @@ cmABP            dpop(2,i,j) = dpop(2,i,j)+ddela(ibin2,j)
 cmABP     .          *dela(1,ibin1,i)
          enddo
       enddo
+cOVERF      endif!ltime
+
+cOVERF      if(obangG.ne.bangG)then!update some stuff
+cOVERF         obangG=bangG
+cOVERF         const=(cee*(1d0-bee)*bangG+1d0)*exp(-(1d0-bee)*flim/bolt)-1d0
+cOVERF         const=const/(cee*(1d0-bee))
+cOVERF         desto=0d0
+cOVERF         do j=1,nbin
+cOVERF            do i=1,nbin
+cOVERF               if(pop(i,j).lt.const)then
+cOVERF                  pop(i,j)=const
+cOVERF                  dpop(1,i,j)=0d0
+cOVERF                  dpop(2,i,j)=0d0
+cOVERF               endif
+cOVERF            enddo
+cOVERF         enddo
+cOVERF         desto=const/ormli
+cOVERF         do j=1,nbin
+cOVERF            do i=1,nbin
+cOVERF               if(decon(i,j).lt.desto)decon(i,j)=desto
+cOVERF            enddo
+cOVERF         enddo
+cHYPER         plat =bee*bolt*log(cee*(1d0-bee)*const+1d0)/(1d0-bee) 
+cOVERF      endif!patch flag
+
+
 !----------------------------------------------------------------------
-98765 continue
+
 !Add the bias forces back to system force
       fr1=0d0
       fr2=0d0
@@ -268,15 +340,17 @@ cmABP     .          *dela(1,ibin1,i)
       if(angl2.gt.edge)then
          fr2=-400d0*bolt*(angl2-edge)
       endif
+
       ff=0d0
       sp=400d0*bolt !or want 100?
-      do i=1,np
-         sum=0d0
-         do j=1,3
-            ip=i*3-(3-j)
-            ff(ip) = ff(ip)+(ave1(1)+fr1)*jaco(1,ip)+
-     .           (ave1(2)+fr2)*jaco(2,ip)
-            sum=sum+(xx(ip)-point(1,j))*(xx(ip)-point(1,j))
+
+cSPHR      do i=1,np
+cSPHR         sum=0d0
+cSPHR         do j=1,3
+cSPHR            ip=i*3-(3-j)
+cSPHR            ff(ip) = ff(ip)+(ave1(1)+fr1)*jaco(1,ip)+
+cSPHR     .           (ave1(2)+fr2)*jaco(2,ip)
+cSPHR            sum=sum+(xx(ip)-point(1,j))*(xx(ip)-point(1,j))
 ! this restrains to the box exactly. i didn't like it so much.
 c            if(xx(ip).ge.width)then!box restraint
 c               ff(ip)=ff(ip) - 100d0*bolt*(xx(ip)-width)
@@ -284,16 +358,43 @@ c            endif
 c            if(xx(ip).le.0d0)then
 c               ff(ip)=ff(ip) - 100d0*bolt*(xx(ip)-0d0)
 c            endif
-         enddo
-         sum=sqrt(sum)
-c         sum=sp/sum
-         if(sum.gt.radius)then!sphere restraint
-            do j=1,3
-               ip=i*3-(3-j)
-               ff(ip) = ff(ip)-sp*(sum-radius)*(xx(ip)-point(1,j))/sum
-            enddo
-         endif
-      enddo
+cSPHR         enddo
+cSPHR         sum=sqrt(sum)
+cSPHR         if(sum.gt.radius)then!sphere restraint
+cSPHR            do j=1,3
+cSPHR               ip=i*3-(3-j)
+cSPHR               ff(ip) = ff(ip)-sp*(sum-radius)*(xx(ip)-point(1,j))/sum
+cSPHR            enddo
+cSPHR         endif
+cSPHR      enddo
+
+cCYLN      do i=1,np
+cCYLN         dd=0d0
+cCYLN         do j=1,3
+cCYLN            ip=i*3-(3-j)
+cCYLN            dd=((xx(ip)-point(1,j))*ormal(j))*
+cCYLN     .           ((xx(ip)-point(1,j))*ormal(j))+dd
+cCYLN         enddo
+cCYLN         dd=sqrt(dd)!this is d
+cCYLN         rr=0d0
+cCYLN         do j=1,3
+cCYLN            ip=i*3-(3-j)
+cCYLN            rr=(xx(ip)-(point(1,j)+dd*ormal(j)))**2+rr
+cCYLN         enddo
+cCYLN         rr=sqrt(rr)!this is R
+cCYLN         fcyl=0d0
+cCYLN         if(rr.gt.radius)fcyl=-sp*(rr-radius)
+cCYLN         sum=0d0
+cCYLN         do j=1,3
+cCYLN            ip=i*3-(3-j)
+cCYLN            ff(ip) = ff(ip)+(ave1(1)+fr1)*jaco(1,ip)+
+cCYLN     .           (ave1(2)+fr2)*jaco(2,ip)
+cCYLN     .           +fcyl*(xx(ip)-(point(1,j)+dd*ormal(j)))
+cCYLN         enddo
+cCYLN      enddo
+
+
+
 !           dihedral restraint
 ! which we used to fix the azepine pucker
 c      jaco = 0d0 !this will hold the phi-psi derivatives
@@ -361,7 +462,7 @@ c      if(1.eq.0)then !debug
          do j=1,nbin
             do i=1,nbin
                write(99,111) pop(i,j), dpop(1,i,j), dpop(2,i,j), 
-     .              decon(i,j)
+     .              decon(i,j)!HYPER, plat
             enddo
          enddo
          close(99)
@@ -397,6 +498,7 @@ cmABP                  freest=-bolt*log(decon(i,j)*pop(i,j)**(bee/(1d0-bee)))
          write(88,*) istep, angl1, angl2, 
 cmABP     .        cee*bee*bolt/(1d0+cee*(1d0-bee)*pop(ibin1,ibin2))  !last dist to middl
 cWTmetaD     .        s  !last dist to middl
+cHYPER     .       ,statea, time
          call flush(88) !write to fort.88
       endif
 
