@@ -130,6 +130,8 @@ Additionally, we point out that reproducing the published ligand escape time est
 
 As explained in the publication (submitted, link to follow), our hyperdynamics is inteded to stop simulation after the initial state is exited so that a new trajectory can begin running in that initial state. Thus, hyperdynamics will terminate when the initial state is exited. A file called *fort.87* will be produced which lists ```time-of-exit trajectory-boost last-instantaneous-boost``` where the first two are most important for comupting mean escapte time and mean boost. The last entry ```last-instantaneous-boost``` can serve as a guide for judging whether or not the fill-depth of the bias is set too high or whether the initial state is inadequately defined.
 
+In [Rundirs]/ALANINE we provide the PBS script that was used to collect 200 reactions in alanine dipeptide simulations.
+
 # Requirements
 1. ***Simulation cell*** Currently only cubic, tetragonal and orthorhombic systems are supported (angles = 90 degrees). At this time we do not plan to implement irregular systems. 
 

@@ -1,0 +1,20 @@
+#!/bin/bash
+#PBS -N 15kJ-contn
+#PBS -j oe 
+#PBS -l nodes=1:ppn=8
+#PBS -l walltime=23:00:00
+cd $PBS_O_WORKDIR
+
+list=`cat $PBS_NODEFILE|uniq`;for item in $list; do echo 10.152.220.$((`echo $item |sed -e 's/node//g;s/^0*//g'` +20));done >nodes
+
+x=1;
+while [ $x -lt 201 ] ; do
+~/ProJectS/wDNAbin/bin/grompp_mpi -f md.mdp -c isob.gro -p topol.top -o run.tpr
+echo $x > trajnum
+mpirun -f nodes -np 8 ./mdrun -deffnm run
+t=`cat fort.87`
+echo $x $t >> alltimes
+x=`echo $x+1|bc`
+rm \#*
+done
+
