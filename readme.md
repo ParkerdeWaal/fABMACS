@@ -3,6 +3,8 @@ A fast, hard-wired version of [GROMACS 5.0.5] that computes free energy estimate
 
 This code is modified for the following functions:
 
+- **NEW:** Compute escape times using [Hyperdynamics](http://public.lanl.gov/afv/afv-66-hyperPRL.pdf)
+
 - Compute free energy via mABP in 2 RMSD collective variables
 
 - Compute Phi-Psi free energy for ALANINE DIPEPTIDE via mABP and WTmetaD
@@ -11,7 +13,7 @@ This code is modified for the following functions:
 
 **This is not standard gromacs, don't use it for equilibration tasks!**
 
-All the things required for building the published ligand simulation inputs are also included in the [RUNdirs] subdirectory. Alanine dipeptide inputs are included there as well, just check the sub directory names and read the README files in those directories.
+All the things required for building the published ligand simulation inputs are included in the [RUNdirs] subdirectory. Alanine dipeptide inputs are included there as well, just check the sub directory names and read the README files in those directories.
 
 The [RUNdirs] directory contains parameter files for everything that appeared in publication. The bias parameter inputs are largely transferable but may need to be tweaked for some situations.
 
@@ -34,7 +36,7 @@ Lastly, distance units are in nanometers, as per GROMACS.
 
 2. Prepare your "list" file. This file holds the atom number of each atom used in the CV. This release uses RMSD for CV, so no atom is expected to appear twice. The "list" file used for simulations that were published is found in the fABMACS dir and is named "benzoisoxazoloazepinelists". To re-run published simulations, copy this file to the name "list". 
 
-3. For Alanine dipeptide ```./PATCHscript.sh alanine``` For custom simulations: Run ./PATCHscript.sh BMAX NPARTS NCV1 NCV2 CVMAX CVREST
+3. Patch the code by running PATCHscript.sh. For Alanine dipeptide ```./PATCHscript.sh alanine``` For custom simulations: Run ./PATCHscript.sh BMAX NPARTS NCV1 NCV2 CVMAX CVREST
 
  - BMAX is the number of bins that will span the CV space
  - NPARTS is the total number of atoms in the collective variables
@@ -44,15 +46,18 @@ Lastly, distance units are in nanometers, as per GROMACS.
  - CVREST is the starting position of a harmonic restraint acting on CV1 and CV2
  - **Example use:** Published ligand simulations used ```./PATCHscript.sh 480 8 4 4 6 5.5``` to run with spherical restraint
  - **Example use:** Published ligand simulations used ```./PATCHscript.sh 480 8 4 4 6 3 cylinder``` to run with cylindrical restraint. CVREST=3 defines the length of the cylinder.
+ - **Alanine with Hyperdynamics:** Patch as ```./PATCHscript.sh alanine HYPER``` and see [RUNdirs] for proper params.in files.
+ - **Alanine with Overfill limits:** Patch as ```./PATCHscript.sh alanine OVERFILL``` and see [RUNdirs] for proper params.in files.
+<a name="patchhyper"></a>
+ - **Ligand escape with Hyperdynamics:** Published ligand hyperdynamics simulations used ```./PATCHscript.sh 480 8 4 4 6 3 cylinder HYPER``` where bias, cylinder, and topology inputs are within [RUNdirs]. See [below](#hyperdetail) for further details.
 
-
-4. Run the cmake command with the options you need to use to compile standard GROMACS 5.0.5. We used the options ```-DGMX_BUILD_OWN_FFTW=ON  -DGMX_SIMD=AVX2_256 -DGMX_OPENMP=OFF -DGMX_MPI=ON``` Our cmake looked like this:
+4. Configure GROMACS build as usual. Make your Build and Bin directories. Then run the cmake command in your build dir with the options you need to use to compile standard GROMACS 5.0.5. We used the options ```-DGMX_BUILD_OWN_FFTW=ON  -DGMX_SIMD=AVX2_256 -DGMX_OPENMP=OFF -DGMX_MPI=ON``` Our cmake looked like this:
 
  - ```cmake PATH-TO-SOURCE -DGMX_BUILD_OWN_FFTW=ON  -DGMX_SIMD=AVX2_256 -DGMX_OPENMP=OFF -DGMX_MPI=ON -DCMAKE_INSTALL_PREFIX=PATH-TO-BIN```
 
-5. Run make from the fABMACS directory
+5. Run make from the fABMACS build directory
 
-6. Run make install from the fABMACS directory
+6. Run make install from the fABMACS build directory
 
 
 # To run simulations of alanine dipeptide
@@ -74,7 +79,7 @@ Lastly, distance units are in nanometers, as per GROMACS.
 
 2. Simulations also write a file named "fort.88" The first column is timestep, second and third columns are collective variables (angles), the fourth column is the convergence metric (equation 28 [HERE])
 
-# Custom simulation or re-run our ligand simulations
+# Custom simulation or re-run our ligand simulations for *free energy*
 ***Things you need, can all be found in RUNdirs/RErun directory***
 
 - Reference file: Holds position of every atom in the CVs at time t=0. The Reference file for our ligand simulations can be seen in the [RUNdirs] directory named RErun. Your Reference file can be created easily using this bit:
@@ -104,6 +109,26 @@ Go run simulations! Be sure that you point to the fABMACS executable. Use SPHERE
 2. Simulations also write a file named "fort.88" The first column is timestep, second and third columns are collective variables 1 and 2, the fourth column is the "hill height"
 
 3. An xyz file of the atoms in the CVs is output, named "fort.81." This file can be used to check that the periodic boundaries are treated correctly.
+
+
+# <a name="hyperdetail"></a> Custom simulation or re-run our ligand simulations for *Hyperdynamics*
+***Things you need, can all be found in RUNdirs/RErun directory***
+
+*The patching command for hyperdynamics simulations was given [above](#patchhyper).*
+
+When hyperdynamics is enabled, a few extra parameters must be specified in params.in, which holds all bias related parameters for a given simulation run. Hyperdynamics requires (1) a fill limit, (2) definition of initial and product states, (3) the simulation timestep. 
+
+1. Fill limit: This parameter sets the depth of the bias potential. The bias will not fill higher than this limit. Units are kJ/mol.
+
+2. Initial and Product states: Hyperdynamics requires the detection of transition events. Accordingly, the user must define the initial state and its boundaries. The input for the published simulations looks like ```0.9 0.9 1 1``` which specifies that the initial state corresponds to values of CV1 < 0.9 and CV2 < 0.9. The initial state has been exited when either CV1 > 1 **or** CV2 > 1. Thus, the first two entries ```0.9 0.9``` indicate the upper CV1 and CV2 boundaries of the initial state. The second two entries ```1 1``` indicate the lower CV1 and CV2 boundaries for all other regions of the CV space. Units are same as CV units, which are nanometer. A sample hyperdynamics input from our ligand simulations is included in [RUNdirs]/RErun/HYPER-params.in
+
+3. Simulation timestep: This last entry is simply the integration timestep in picosecond units. 
+
+Additionally, we point out that reproducing the published ligand escape time estimates requires two changes, with respect to the free energy simulations, beyond these additional parameter entries. We used a different cylinder position for hyperdynamics and we used minimal backbone restraints of the BRD4 bromodomain. The cylinder inputs are found in [RUNdirs]/RErun/cylpoints-hyperdynamics. The protein restraints are found in [RUNdirs]/RErun/shortbacks.itp. 
+
+**If reproducing our hyperdynamics, remember to use the correct cylpoints file and remember to point the [Rundirs]/RErun/topol.top to the shortbacks.itp file rather than back.itp.**
+
+As explained in the publication (submitted, link to follow), our hyperdynamics is inteded to stop simulation after the initial state is exited so that a new trajectory can begin running in that initial state. Thus, hyperdynamics will terminate when the initial state is exited. A file called *fort.87* will be produced which lists ```time-of-exit trajectory-boost last-instantaneous-boost``` where the first two are most important for comupting mean escapte time and mean boost. The last entry ```last-instantaneous-boost``` can serve as a guide for judging whether or not the fill-depth of the bias is set too high or whether the initial state is inadequately defined.
 
 # Requirements
 1. ***Simulation cell*** Currently only cubic, tetragonal and orthorhombic systems are supported (angles = 90 degrees). At this time we do not plan to implement irregular systems. 

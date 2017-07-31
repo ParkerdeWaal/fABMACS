@@ -9,12 +9,12 @@ cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       real*8 dela(3,BMAX,BMAX),ddela(BMAX,BMAX)
       real*8 decon(BMAX,BMAX),  widths(3)
       real*8 x0(NPARTS*3),ocog(3) 
-      real*8 xwrp(NPARTS*3)!HYPER,statea,time,plat
+      real*8 xwrp(NPARTS*3)!HYPER,statea,time,plat,dtime
       real*8 alp,bee,cee,width,dih,DelT!OVERF,desto,flim
       real*8 bolt,dx,radius,scal,omega!OVERF,const,bangG,obangG
 cHYPER      real*8 ASTATE1,ASTATE2,BSTATE1,BSTATE2
       real*8 point(2,3),ormal(3),ormli
-      integer look(BMAX,BMAX),ialp,ltime
+      integer ialp,ltime
       integer nbin,imabp,np,np1,np2
       save !and save the stuff
 
@@ -41,6 +41,15 @@ cCYLN               read(13,*) point(i,j)
 cCYLN            enddo
 cCYLN         enddo
 cCYLN         close(13)
+         !get norm once
+cCYLN         sum=0d0
+cCYLN         do j=1,3
+cCYLN            sum=sum+(point(2,j)-point(1,j))**2
+cCYLN         enddo
+cCYLN         sum=sqrt(sum)
+cCYLN         do j=1,3
+cCYLN            ormal(j)=(point(2,j)-point(1,j))/sum
+cCYLN         enddo
 
 cSPHR         open(13,file="sphpoints")!replaced width/2 as sphere center
 cSPHR         do i=1,1
@@ -79,6 +88,7 @@ c         enddo
          read(11,*) irest !restart or not
 cOVERF         read(11,*) flim !fill limit
 cHYPER         read(11,*) ASTATE1, ASTATE2, BSTATE1, BSTATE2
+cHYPER         read(11,*) dtime
          bolt = temperature/11604.467d0 *96.48d0 !hard code TEMPERATURE!!!!!!
          imabp=0
 cHYPER         plat=bee*bolt*log(cee*bee*0d0+1d0)/(1d0-bee)
@@ -102,7 +112,7 @@ c         alp2 = alp*alp !save the alpha^2
                if(ib1.gt.nbin)ib1=nbin
                if(ib1.lt.1)ib1=1     
                ib1=nbin*i-(nbin-j)!ib1
-c               look(i,j)=ib1
+
 !-----MOLLIIIIIII
                ex = arg2/tol
                aex=ex*ex
@@ -242,9 +252,9 @@ cHYPER      pwr=bee/(1d0-bee)!         !
 cHYPER      boost=denom**pwr!          !carve these out on PATCH flag
 cHYPER      boost=boost*exp(-plat/bolt)!
 cHYPER      ltime=50000 !dephase time, in steps
-cHYPER      if(angl1.lt.ASTATE1.or.angl2.lt.ASTATE2.and.istep.gt.ltime)then !statea
-cHYPER         statea=statea+0.002d0*boost !assumes timestep
-cHYPER         time=time+0.002d0
+cHYPER      if(angl1.lt.ASTATE1.and.angl2.lt.ASTATE2.and.istep.gt.ltime)then !statea
+cHYPER         statea=statea+dtime*boost 
+cHYPER         time=time+dtime
 cHYPER      elseif(angl1.gt.BSTATE1.or.angl2.gt.BSTATE2)then
 cHYPER         write(87,*) statea, statea/time, boost !can do post proc 
 cHYPER         call flush(87)
