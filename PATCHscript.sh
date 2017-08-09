@@ -104,7 +104,7 @@ else
 	echo "0.9" | tee -a $LOG
 	echo "0.1" | tee -a $LOG
 	echo "10.0" | tee -a $LOG
-	echo "7.0265" | tee -a $LOG
+	echo "7.0265 7.0265 7.0265" | tee -a $LOG
 	echo "1.3" | tee -a $LOG
 	echo "20.0" | tee -a $LOG
 	echo "0" | tee -a $LOG
