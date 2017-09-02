@@ -19,7 +19,7 @@ else
 
 if [ -z "$1" ] ; then
     echo "Please specify inputs. Run this scripts as:"
-    echo "./PATCHscript.sh 480 8 4 4 6 5.5"
+    echo "./PATCHscript.sh 480 51 20 19 12 4 4 OVERFILL"
     echo "where:"
     echo "BMAX=480 is number of bins"
     echo "NPARTS=8 is particle number"
@@ -55,9 +55,11 @@ else
     eval $cmd 
     cmd=`echo "sed -i 's/NCV2/"$4"/g' tempfile.f"`
     eval $cmd
-    cmd=`echo "sed -i 's/CVMAX/"$5"/g' tempfile.f"`
+    cmd=`echo "sed -i 's/NCV3/"$5"/g' tempfile.f"`
     eval $cmd
-    cmd=`echo "sed -i 's/CVREST/"$6"/g' tempfile.f"`
+    cmd=`echo "sed -i 's/CVMAX/"$6"/g' tempfile.f"`
+    eval $cmd
+    cmd=`echo "sed -i 's/CVREST/"$7"/g' tempfile.f"`
     eval $cmd
     if [ $ffil -gt 0 ] ; then
 	sed -i 's/cOVERF//g' tempfile.f	

@@ -1,15 +1,15 @@
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 ! BMD PWdW 2015/20016 fABMACS
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-      subroutine hellof(istep,xx,ff)
+      subroutine hellof(istep,xx,ff,boxD)
       implicit integer*4 (i-n)
-      implicit real*8 (a-h,o-z)      
+      implicit real*8 (a-h,o-z)
       real*4 bigd(BMAX,BMAX)
       real*8 dpop(2,BMAX,BMAX),pop(BMAX,BMAX)
       real*8 dela(3,BMAX,BMAX),ddela(BMAX,BMAX)
-      real*8 decon(BMAX,BMAX),  widths(3)
-      real*8 x0(NPARTS*3),ocog(3) 
-      real*8 xwrp(NPARTS*3)!HYPER,statea,time,plat,dtime
+      real*8 decon(BMAX,BMAX)
+      real*8 x0(NPARTS*3),ocog(3)
+      real*8 xwrp(NPARTS*3),plat !HYPER,statea,time,plat,dtime
       real*8 alp,bee,cee,width,dih,DelT!OVERF,desto,flim
       real*8 bolt,dx,radius,scal,omega!OVERF,const,bangG,obangG
 cHYPER      real*8 ASTATE1,ASTATE2,BSTATE1,BSTATE2
@@ -18,9 +18,9 @@ cHYPER      real*8 ASTATE1,ASTATE2,BSTATE1,BSTATE2
       integer nbin,imabp,np,np1,np2
       save !and save the stuff
 
-      real ff(NPARTS*3),xx(NPARTS*3)
+      real ff(NPARTS*3),xx(NPARTS*3),boxD(3)
       real*8 widths24(3), widths2(3)
-      real*8 jaco(2,NPARTS*3),cog(3) !with ALY      !aly
+      real*8 jaco(2,NPARTS*3),cog(3),TMcog(3,3),COGd(2) !with ALY      !aly
       real*8 deid(3,4),qa(12)!for dihedral restraint
       real*8 ave1(2),freest
       real*8 orml,sumd,at1,at2,bang,arg
@@ -57,32 +57,22 @@ cSPHR            do j=1,3
 cSPHR               read(13,*) point(i,j)
 cSPHR            enddo
 cSPHR         enddo
-         
+
          bah=1d0
          bah2 = 1d0
          bah3=0d0
-         nbin = BMAX !number of bins 
+         nbin = BMAX !number of bins
          np=NPARTS
-         open(13,file='Reference')
-         do i=1,np
-            read(13,*) x0(i*3-(3-1)), x0(i*3-(3-2)), x0(i*3-(3-3))
-         enddo
-         close(13)
-c         do i=1,np!116
-c            do j=1,3
-c               x0(i*3-(3-j))=x0(i*3-(3-j))/10d0!
-c            enddo
-c         enddo
 
-         np1=NCV1
-         np2=NCV2 
+         np1=NCV1 !TM 1/2 particles
+         np2=NCV2 !TM 3/4 particles
+         np3=NCV3 !TM 6 particles
 
          open(11,file='params.in') !user inputs
          read(11,*) temperature
          read(11,*) bee !b parameter in mABP
          read(11,*) cee !c parameter in mABP (is taken as c*dt)
          read(11,*) alp !a/dx in S_a
-         read(11,*) (widths(j),j=1,3) ! rectangular
          read(11,*) radius !sphere or cyl restraint
          read(11,*) scal !power for shape
          read(11,*) irest !restart or not
@@ -91,7 +81,7 @@ cHYPER         read(11,*) ASTATE1, ASTATE2, BSTATE1, BSTATE2
 cHYPER         read(11,*) dtime
          bolt = temperature/11604.467d0 *96.48d0 !hard code TEMPERATURE!!!!!!
          imabp=0
-cHYPER         plat=bee*bolt*log(cee*bee*0d0+1d0)/(1d0-bee)
+cOVERF         plat=bee*bolt*log(cee*bee*0d0+1d0)/(1d0-bee) !converted to calculate boost
          close(11) !close it
 cWTmetaD         omega = bolt*bee*cee !WTmetaD conversion, and muTmetaD
 cWTmetaD         DelT = bolt*bee/(1d0-bee) !ditto
@@ -110,7 +100,7 @@ c         alp2 = alp*alp !save the alpha^2
                arg2=xati-xatj
                ib1 = int((arg2)/dx)+1      !theres an issue here
                if(ib1.gt.nbin)ib1=nbin
-               if(ib1.lt.1)ib1=1     
+               if(ib1.lt.1)ib1=1
                ib1=nbin*i-(nbin-j)!ib1
 
 !-----MOLLIIIIIII
@@ -146,7 +136,7 @@ c         alp2 = alp*alp !save the alpha^2
 
 
          do j=1,nbin
-            do i=1,nbin                  
+            do i=1,nbin
                pop(i,j) = 0d0   !initialize arrays
                if(imabp.eq.0)then
                decon(i,j)=0.1d0 !to avoid log(0)
@@ -161,8 +151,8 @@ c         alp2 = alp*alp !save the alpha^2
             open(99,file='restartABP')
             do j=1,nbin
                do i=1,nbin
-                  read(99,111) pop(i,j), dpop(1,i,j), dpop(2,i,j), 
-     .                 decon(i,j)!HYPER, plat
+                  read(99,111) pop(i,j), dpop(1,i,j), dpop(2,i,j),
+     .                 decon(i,j), plat
                enddo
             enddo
             close(99)
@@ -175,93 +165,126 @@ c         alp2 = alp*alp !save the alpha^2
          ormli=sum*sum !90% fudger
 
       endif                     !end the initial stuff
-!do basic PBC here with a cubic box, careful to hardcode the box
+      !do basic PBC here with a cubic box, careful to hardcode the box
 
       do k=1,3
-         widths2(k)=widths(k)*widths(k)
-         widths24(k)=widths2(k)/4d0
+        widths2(k)=boxD(k)**2
+        widths24(k)=widths2(k)/4d0
       enddo
-
+c      write(77,*) (boxD(j),j=1,3)
+c      call flush(77)
 
       do l=1,1
-      do i=1,np
-         do j=i,i
-               do k=1,3
-                  xxi=xx(i*3-(3-k))
-                  xxj=xwrp(j*3-(3-k))
-                  dr=xxi-xxj
-                  dr2=dr*dr                  
-                  if(dr2.gt.widths24(k))then !somebody need unwrappin, just roll j
-                     if(dr.gt.0d0)then
-                        xx(i*3-(3-k))=xx(i*3-(3-k))-widths(k)                        
-                     elseif(dr.lt.0d0)then
-                        xx(i*3-(3-k))=xx(i*3-(3-k))+widths(k)                        
-                     endif
-                  endif
-               enddo
-         enddo
-      enddo
+        do i=1,np
+          do j=i,i
+            do k=1,3
+              xxi=xx(i*3-(3-k))
+              xxj=xwrp(j*3-(3-k))
+              dr=xxi-xxj
+              dr2=dr*dr
+              if(dr2.gt.widths24(k))then !somebody need unwrappin, just roll j
+                if(dr.gt.0d0)then
+                  xx(i*3-(3-k))=xx(i*3-(3-k))-boxD(k)
+                elseif(dr.lt.0d0)then
+                  xx(i*3-(3-k))=xx(i*3-(3-k))+boxD(k)
+                endif
+              endif
+            enddo
+          enddo
+        enddo
       enddo!l
       xwrp=xx
 
-      jaco = 0d0 !this will hold the RMSD derivative
-      !angl1 and angl2 are the CV-in RMSD
+      jaco = 0d0 !this will hold the COG Distance derivative
+      !angl1 and angl2 are the CV-in distance
+      !calculation of 4 COGS D1<->2, D3<->4
       sum=0d0
-      do i=1,np1!np1 particles in here
-         do j=1,3
-            ip=i
-            sum=sum+(xx(ip*3-(3-j))-x0(3*ip-(3-j)))**2
-            jaco(1,ip*3-(3-j))=(xx(ip*3-(3-j))-x0(3*ip-(3-j)))
-c     .           +jaco(1,ip*3-(3-j))
-         enddo
-      enddo
-      angl1=sqrt(0.01d0+sum/dble(np1)/3d0) !root-mean squared
-      sum=0d0
-      do i=1,np2
-         do j=1,3
-            ip=i+np1
-            sum=sum+(xx(ip*3-(3-j))-x0(3*ip-(3-j)))**2
-            jaco(2,ip*3-(3-j))=(xx(ip*3-(3-j))-x0(3*ip-(3-j)))
-c     .           +jaco(2,ip*3-(3-j))
-         enddo
-      enddo
-      angl2=sqrt(0.01d0+sum/dble(np2)/3d0) !root-mean squared
-      do i=1,np1
-         do j=1,3
-            ip=i*3-(3-j)
-            jaco(1,ip)=jaco(1,ip)/angl1/3d0/dble(np1)
-         enddo
-      enddo
-      do i=1,np2
-         do j=1,3
-            ip=(i+np1)*3-(3-j)
-            jaco(2,ip)=jaco(2,ip)/angl2/3d0/dble(np2)
-         enddo
+      TMcog=0d0
+      !calculate COGs
+      do j=1,3 ! axis
+        sum=0d0
+        do i=1,np1 !np1
+          ip=i
+          sum=sum+xx(ip*3-(3-j))
+        enddo
+        TMcog(1,j)=sum/dble(np1)
+        sum=0d0
+        offset=np1
+        do i=1,np2 !np2
+          ip=i+offset
+          sum=sum+xx(ip*3-(3-j))
+        enddo
+        TMcog(2,j)=sum/dble(np2)
+        sum=0d0
+        offset=np1+np2
+        do i=1,np3!np3
+          ip=i+offset
+          sum=sum+xx(ip*3-(3-j))
+        enddo
+        TMcog(3,j)=sum/dble(np3)
       enddo
 
-      ibin = int(angl1/dx)+1      
+      !calculate COG distances
+      COGd=0d0
+      sum=0d0
+      !np1 to np3
+      do j=1,3
+        sum=sum+(TMcog(1,j)-TMcog(3,j))**2
+      enddo
+      angl1=sqrt(sum) ! distance between np1 and np2
+      sum=0d0
+      !np2 to np3
+      do j=1,3
+        sum=sum+(TMcog(2,j)-TMcog(3,j))**2
+      enddo
+      angl2=sqrt(sum) ! distance between np3 and np4
+      do i=1,np1!np1 to np3 jaco
+         do j=1,3
+            ip=i
+            jaco(1,ip*3-(3-j))=(TMcog(1,j)-TMcog(3,j))/angl1/dble(np1)
+         enddo
+      enddo
+      offset=np1
+      do i=1,np2!np2 to np3 jaco
+         do j=1,3
+            ip=i+offset
+            jaco(2,ip*3-(3-j))=(TMcog(2,j)-TMcog(3,j))/angl2/dble(np2)
+         enddo
+      enddo
+      offset=np1+np2
+      do i=1,np3!np3 to np1 and np3 to np2 jacobian
+        do j=1,3
+          ip=i+offset
+          jaco(1,ip*3-(3-j))=(TMcog(3,j)-TMcog(1,j))/angl1/dble(np3)
+          jaco(2,ip*3-(3-j))=(TMcog(3,j)-TMcog(2,j))/angl2/dble(np3)
+        enddo
+      enddo
+
+
+
+      ibin = int(angl1/dx)+1
       if(ibin.gt.nbin)ibin=nbin
-      if(ibin.lt.1)ibin=1     
+      if(ibin.lt.1)ibin=1
       ibin1=ibin
-      ibin = int(angl2/dx)+1      
+      ibin = int(angl2/dx)+1
       if(ibin.gt.nbin)ibin=nbin
-      if(ibin.lt.1)ibin=1     
+      if(ibin.lt.1)ibin=1
       ibin2=ibin
-cmABP      denom = 1d0+cee*(1d0-bee)*pop(ibin1,ibin2)            
-cHYPER      pwr=bee/(1d0-bee)!         !
-cHYPER      boost=denom**pwr!          !carve these out on PATCH flag
-cHYPER      boost=boost*exp(-plat/bolt)!
+cmABP      denom = 1d0+cee*(1d0-bee)*pop(ibin1,ibin2)
+cmABP      pwr=bee/(1d0-bee)!         !
+cmABP      boost=denom**pwr!          !carve these out on PATCH flag
+cmABP      boost=boost*exp(-plat/bolt)!
 cHYPER      ltime=50000 !dephase time, in steps
 cHYPER      if(angl1.lt.ASTATE1.and.angl2.lt.ASTATE2.and.istep.gt.ltime)then !statea
-cHYPER         statea=statea+dtime*boost 
+cHYPER         statea=statea+dtime*boost
 cHYPER         time=time+dtime
 cHYPER      elseif(angl1.gt.BSTATE1.or.angl2.gt.BSTATE2)then
-cHYPER         write(87,*) statea, statea/time, boost !can do post proc 
+cHYPER         write(87,*) statea, statea/time, boost !can do post proc
 cHYPER         call flush(87)
 cHYPER         open(99,file='restartABP')
 cHYPER         do j=1,nbin
 cHYPER            do i=1,nbin
-cHYPER               write(99,111) pop(i,j), dpop(1,i,j), dpop(2,i,j), 
+cHYPER               write(99,111) pop(i,j), dpop(1,i,j), dpop(2,i,j),
 cHYPER     .              decon(i,j), plat
 cHYPER            enddo
 cHYPER         enddo
@@ -274,11 +297,11 @@ cHYPER      endif!patchscript flag
 !-------------------------------------------------------------------------
 
 cWTmetaD      ave1(1) = -dpop(1,ibin1,ibin2)
-cWTmetaD      ave1(2) = -dpop(2,ibin1,ibin2)            
+cWTmetaD      ave1(2) = -dpop(2,ibin1,ibin2)
 cWTmetaD      s=exp(-pop(ibin1,ibin2)/DelT)*omega
 
-cmABP      ave1(1) = -cee*bee*bolt*dpop(1,ibin1,ibin2)/denom 
-cmABP      ave1(2) = -cee*bee*bolt*dpop(2,ibin1,ibin2)/denom 
+cmABP      ave1(1) = -cee*bee*bolt*dpop(1,ibin1,ibin2)/denom
+cmABP      ave1(2) = -cee*bee*bolt*dpop(2,ibin1,ibin2)/denom
       !update grids, if hyperd then delay by ltime
 cOVERF      if(const.le.pop(ibin1,ibin2).and.istep.gt.ltime)then!
       decon(ibin1,ibin2)=decon(ibin1,ibin2)+1d0
@@ -334,16 +357,17 @@ cOVERF            do i=1,nbin
 cOVERF               if(decon(i,j).lt.desto)decon(i,j)=desto
 cOVERF            enddo
 cOVERF         enddo
-cHYPER         plat =bee*bolt*log(cee*(1d0-bee)*const+1d0)/(1d0-bee) 
+cOVERF         plat =bee*bolt*log(cee*(1d0-bee)*const+1d0)/(1d0-bee)
 cOVERF      endif!patch flag
 
 
 !----------------------------------------------------------------------
 
+
 !Add the bias forces back to system force
       fr1=0d0
       fr2=0d0
-      edge=CVRESTd0 
+      edge=4d0
       if(angl1.gt.edge)then
          fr1=-400d0*bolt*(angl1-edge)
       endif
@@ -354,61 +378,29 @@ cOVERF      endif!patch flag
       ff=0d0
       sp=400d0*bolt !or want 100?
 
-cSPHR      do i=1,np
-cSPHR         sum=0d0
-cSPHR         do j=1,3
-cSPHR            ip=i*3-(3-j)
-cSPHR            ff(ip) = ff(ip)+(ave1(1)+fr1)*jaco(1,ip)+
-cSPHR     .           (ave1(2)+fr2)*jaco(2,ip)
-cSPHR            sum=sum+(xx(ip)-point(1,j))*(xx(ip)-point(1,j))
-! this restrains to the box exactly. i didn't like it so much.
-c            if(xx(ip).ge.width)then!box restraint
-c               ff(ip)=ff(ip) - 100d0*bolt*(xx(ip)-width)
-c            endif
-c            if(xx(ip).le.0d0)then
-c               ff(ip)=ff(ip) - 100d0*bolt*(xx(ip)-0d0)
-c            endif
-cSPHR         enddo
-cSPHR         sum=sqrt(sum)
-cSPHR         if(sum.gt.radius)then!sphere restraint
-cSPHR            do j=1,3
-cSPHR               ip=i*3-(3-j)
-cSPHR               ff(ip) = ff(ip)-sp*(sum-radius)*(xx(ip)-point(1,j))/sum
-cSPHR            enddo
-cSPHR         endif
-cSPHR      enddo
-
-cCYLN      do i=1,np
-cCYLN         dd=0d0
-cCYLN         do j=1,3
-cCYLN            ip=i*3-(3-j)
-cCYLN            dd=((xx(ip)-point(1,j))*ormal(j))*
-cCYLN     .           ((xx(ip)-point(1,j))*ormal(j))+dd
-cCYLN         enddo
-cCYLN         dd=sqrt(dd)!this is d
-cCYLN         rr=0d0
-cCYLN         do j=1,3
-cCYLN            ip=i*3-(3-j)
-cCYLN            rr=(xx(ip)-(point(1,j)+dd*ormal(j)))**2+rr
-cCYLN         enddo
-cCYLN         rr=sqrt(rr)!this is R
-cCYLN         fcyl=0d0
-cCYLN         if(rr.gt.radius)fcyl=-sp*(rr-radius)
-cCYLN         sum=0d0
-cCYLN         do j=1,3
-cCYLN            ip=i*3-(3-j)
-cCYLN            ff(ip) = ff(ip)+(ave1(1)+fr1)*jaco(1,ip)+
-cCYLN     .           (ave1(2)+fr2)*jaco(2,ip)
-cCYLN     .           +fcyl*(xx(ip)-(point(1,j)+dd*ormal(j)))
-cCYLN         enddo
-cCYLN      enddo
+      do i=1,np
+         sum=0d0
+         do j=1,3
+            ip=i*3-(3-j)
+            ff(ip) = ff(ip)+(ave1(1)+fr1)*jaco(1,ip)+
+     .           (ave1(2)+fr2)*jaco(2,ip)
+            sum=sum+(xx(ip)-point(1,j))*(xx(ip)-point(1,j))
+         enddo
+         sum=sqrt(sum)
+         if(sum.gt.radius)then!sphere restraint
+            do j=1,3
+               ip=i*3-(3-j)
+               ff(ip) = ff(ip)-sp*(sum-radius)*(xx(ip)-point(1,j))/sum
+            enddo
+         endif
+      enddo
 
 
 
 !           dihedral restraint
 ! which we used to fix the azepine pucker
 c      jaco = 0d0 !this will hold the phi-psi derivatives
-c      natom1=5!5 
+c      natom1=5!5
 c      natom2=6!7
 c      natom3=7!9
 c      natom4=8!15
@@ -459,6 +451,14 @@ c      enddo
 
 !----------------------------------------------------------------------
 !     Write a restart file and get convergence curve
+      if(mod(istep,5000).eq.0)then
+!                 TimeStep, CV1, CV2, hill height,boost
+                 write(88,*) istep, angl1, angl2,
+     .        cee*bee*bolt/(1d0+cee*(1d0-bee)*pop(ibin1,ibin2)),boost  !last dist to middl
+cWTmetaD     .        s  !last dist to middl
+cHYPER     .       ,statea, time
+                 call flush(88) !write to fort.88
+      endif
       if(mod(istep,50000).eq.0)then
 c      if(1.eq.0)then !debug
          write(81,*) np
@@ -471,18 +471,18 @@ c      if(1.eq.0)then !debug
          open(99,file='restartABP')
          do j=1,nbin
             do i=1,nbin
-               write(99,111) pop(i,j), dpop(1,i,j), dpop(2,i,j), 
-     .              decon(i,j)!HYPER, plat
+               write(99,111) pop(i,j), dpop(1,i,j), dpop(2,i,j),
+     .              decon(i,j), plat
             enddo
          enddo
          close(99)
          !Get the zero-of energy
-         bang=0d0    
+         bang=0d0
          do j=1,nbin
             do i=1,nbin
 cWTmetaD               sf=exp(-pop(i,j)/DelT)*omega
 cWTmetaD               freest = bolt*log(sf)-pop(i,j)
-cmABP                  freest=-bolt*log(decon(i,j)*pop(i,j)**(bee/(1d0-bee)))               
+                  freest=-bolt*log(decon(i,j)*pop(i,j)**(bee/(1d0-bee)))
                if(freest.lt.bang)bang=freest !Sets the zero
             enddo
          enddo
@@ -492,25 +492,19 @@ cmABP                  freest=-bolt*log(decon(i,j)*pop(i,j)**(bee/(1d0-bee)))
          orml=0d0
          do j=1,nbin
             at2 = dx * (dble(j) - 0.5d0)
-            do i=1,nbin           
+            do i=1,nbin
                at1 = dx * (dble(i) - 0.5d0)
 cWTmetaD               sf=exp(-pop(i,j)/DelT)*omega
 cWTmetaD               freest = bolt*log(sf)-pop(i,j)
-cmABP                  freest=-bolt*log(decon(i,j)*pop(i,j)**(bee/(1d0-bee)))               
+                  freest=-bolt*log(decon(i,j)*pop(i,j)**(bee/(1d0-bee)))
                freest=freest-bang !put min to zero
                write(89,*) at1, at2, freest, decon(i,j) !write free energy to fort.89
             enddo
             write(89,*)
          enddo
          close(89)
-77777    continue
-!                 TimeStep, CV1, CV2, hill height
-         write(88,*) istep, angl1, angl2, 
-cmABP     .        cee*bee*bolt/(1d0+cee*(1d0-bee)*pop(ibin1,ibin2))  !last dist to middl
-cWTmetaD     .        s  !last dist to middl
-cHYPER     .       ,statea, time
-         call flush(88) !write to fort.88
       endif
+
 
  111   format(4(E12.5,1X))
       return
@@ -523,14 +517,14 @@ cHYPER     .       ,statea, time
       implicit integer*4 (i-n)
       implicit real*8 (a-h,o-z)
       real*8 deid(3,4),qa(12),angle,radian
-      
+
       radian = 180d0/acos(-1d0)
       do i=1,4
          do  j=1,3
             deid(j,i)=0d0
          enddo
       enddo
-      
+
       xia = qa(1)
       yia = qa(2)
       zia = qa(3)
@@ -548,7 +542,7 @@ cHYPER     .       ,statea, time
       zba = zib - zia
       xcb = xic - xib
       ycb = yic - yib
-      zcb = zic - zib      
+      zcb = zic - zib
       xdc = xid - xic
       ydc = yid - yic
       zdc = zid - zic
@@ -581,7 +575,7 @@ cHYPER     .       ,statea, time
       dedphi = 1d0
       xca = xic - xia
       yca = yic - yia
-      zca = zic - zia      
+      zca = zic - zia
       xdb = xid - xib
       ydb = yid - yib
       zdb = zid - zib
@@ -604,7 +598,7 @@ cHYPER     .       ,statea, time
       dedyid = xcb*dedzu - zcb*dedxu
       dedzid = ycb*dedxu - xcb*dedyu
       deid(1,1) = deid(1,1) + dedxia
-      deid(2,1) = deid(2,1) + dedyia 
+      deid(2,1) = deid(2,1) + dedyia
       deid(3,1) = deid(3,1) + dedzia
       deid(1,2) = deid(1,2) + dedxib
       deid(2,2) = deid(2,2) + dedyib
