@@ -183,15 +183,16 @@ c      do l=1,1
               dr=xxi-xxj
               dr2=dr*dr
               do while (dr2.gt.widths24(k))
-               	if(dr.gt.0d0)then
-                  xx(i*3-(3-k))=xx(i*3-(3-k))-boxD(k)
-               	elseif(dr.lt.0d0)then
-                  xx(i*3-(3-k))=xx(i*3-(3-k))+boxD(k)
-                endif
-               	xxi=xx(i*3-(3-k))
-                dr=xxi-xxj
-                dr2=dr*dr
-              enddo
+               if(dr.gt.0d0)then
+                xxi=xx(i*3-(3-k))-widths(k)
+                xx(i*3-(3-k))=xxi
+               elseif(dr.lt.0d0)then
+                xxi=xx(i*3-(3-k))+widths(k)
+                xx(i*3-(3-k))=xxi
+               endif
+               dr=xxi-xxj
+               dr2=dr*dr
+               enddo
             enddo
           enddo
         enddo
