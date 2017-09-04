@@ -174,7 +174,7 @@ c         alp2 = alp*alp !save the alpha^2
 c      write(77,*) (boxD(j),j=1,3)
 c      call flush(77)
 
-      do l=1,1
+c      do l=1,1
         do i=1,np
           do j=i,i
             do k=1,3
@@ -182,17 +182,20 @@ c      call flush(77)
               xxj=xwrp(j*3-(3-k))
               dr=xxi-xxj
               dr2=dr*dr
-              if(dr2.gt.widths24(k))then !somebody need unwrappin, just roll j
-                if(dr.gt.0d0)then
+              do while (dr2.gt.widths24(k))
+               	if(dr.gt.0d0)then
                   xx(i*3-(3-k))=xx(i*3-(3-k))-boxD(k)
-                elseif(dr.lt.0d0)then
+               	elseif(dr.lt.0d0)then
                   xx(i*3-(3-k))=xx(i*3-(3-k))+boxD(k)
                 endif
-              endif
+               	xxi=xx(i*3-(3-k))
+                dr=xxi-xxj
+                dr2=dr*dr
+              enddo
             enddo
           enddo
         enddo
-      enddo!l
+c      enddo!l
       xwrp=xx
 
       jaco = 0d0 !this will hold the COG Distance derivative

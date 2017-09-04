@@ -19,7 +19,7 @@ else
 
 if [ -z "$1" ] ; then
     echo "Please specify inputs. Run this scripts as:"
-    echo "./PATCHscript.sh 480 51 20 19 12 4 4 OVERFILL"
+    echo "./PATCHscript.sh 480 50 20 20 10 5 4.5 OVERFILL"
     echo "where:"
     echo "BMAX=480 is number of bins"
     echo "NPARTS=8 is particle number"
