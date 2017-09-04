@@ -184,10 +184,10 @@ c      do l=1,1
               dr2=dr*dr
               do while (dr2.gt.widths24(k))
                if(dr.gt.0d0)then
-                xxi=xx(i*3-(3-k))-widths(k)
+                xxi=xx(i*3-(3-k))-boxD(k)
                 xx(i*3-(3-k))=xxi
                elseif(dr.lt.0d0)then
-                xxi=xx(i*3-(3-k))+widths(k)
+                xxi=xx(i*3-(3-k))+boxD(k)
                 xx(i*3-(3-k))=xxi
                endif
                dr=xxi-xxj
